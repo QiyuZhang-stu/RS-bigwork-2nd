@@ -1,11 +1,57 @@
-
-
 #include "value.h"
 #include<cmath>
 #include <iomanip>
 #include <sstream>
 
+
+
+
+
+// BooleanValue
+bool BooleanValue::isSelfEvaluating() const {
+    return true;
+}
+
+// NumericValue
+bool NumericValue::isSelfEvaluating() const {
+    return true;
+}
+
+// StringValue
+bool StringValue::isSelfEvaluating() const {
+    return true;
+}
+
+// NilValue
+bool NilValue::isNil() const {
+    return true;
+}
+
+// SymbolValue
+std::optional<std::string> SymbolValue::asSymbol() const {
+    return name_;
+}
+
+// PairValue
+std::vector<std::shared_ptr<Value>> PairValue::toVector() const {
+    std::vector<std::shared_ptr<Value>> result;
+    auto current = std::make_shared<PairValue>(*this);
+    while (current && !current->isNil()) {
+        result.push_back(current->car_);
+        if (auto pair = std::dynamic_pointer_cast<PairValue>(current->cdr_)) {
+            current = pair;
+        } else {
+            if (!current->cdr_->isNil()) {
+                throw std::runtime_error("Improper list");
+            }
+            break;
+        }
+    }
+    return result;
+}
+
 // BooleanValue: #t 或 #f
+
 std::string BooleanValue::toString() const {
     return value_ ? "#t" : "#f";
 }

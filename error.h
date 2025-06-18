@@ -10,7 +10,8 @@ public:
 
 class LispError : public std::runtime_error {
 public:
-    using runtime_error::runtime_error;
+    explicit LispError(const std::string& message)
+        : std::runtime_error("Eval error: " + message) {}
 };
 
 #endif
