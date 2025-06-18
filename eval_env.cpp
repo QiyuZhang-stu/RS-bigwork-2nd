@@ -4,10 +4,23 @@
 
 #include "error.h"
 #include "builtins.h"
+#include "forms.h"
 
-EvalEnv::EvalEnv() {
-    initializeBuiltins();  // 可以在这里初始化一些内置函数
+
+// 安全地从栈环境创建共享指针
+std::shared_ptr<EvalEnv> EvalEnv::createSharedFromThis() {
+    return shared_from_this();
 }
+
+EvalEnv::EvalEnv() : parent_(nullptr) {
+    initializeBuiltins();
+}
+
+EvalEnv::EvalEnv(const std::shared_ptr<EvalEnv>& parent) : parent_(parent) {
+    // 子环境初始化逻辑
+}
+
+
 
 
 void EvalEnv::initializeBuiltins() {
@@ -51,6 +64,20 @@ void EvalEnv::initializeBuiltins() {
     symbolTable_["exit"] = std::make_shared<BuiltinProcValue>(exitFunc, "exit");
 }
 
+ValuePtr EvalEnv::lookup(const std::string& name) {
+    // 在当前环境查找
+    auto it = symbolTable_.find(name);
+    if (it != symbolTable_.end()) {
+        return it->second;
+    }
+
+    // 如果在父环境中查找
+    if (parent_) {
+        return parent_->lookup(name);
+    }
+
+    throw LispError("Variable " + name + " not defined.");
+}
 
 
 ValuePtr EvalEnv::eval(ValuePtr expr) {
@@ -66,12 +93,7 @@ ValuePtr EvalEnv::eval(ValuePtr expr) {
 
     // 3. 符号查找
     if (auto name = expr->asSymbol()) {
-        auto it = symbolTable_.find(*name);
-        if (it != symbolTable_.end()) {
-            return it->second;
-        } else {
-            throw LispError("Variable " + *name + " not defined.");
-        }
+        return this->lookup(*name);  
     }
 
     // 4. 处理列表
@@ -86,26 +108,12 @@ ValuePtr EvalEnv::eval(ValuePtr expr) {
         }
 
         // 处理特殊形式 define
-        if (auto first = list[0]->asSymbol()) {
-            if (*first == "define") {
-                if (list.size() != 3) {
-                    throw LispError(
-                        "Malformed define: expected exactly 3 elements");
-                }
-
-                if (auto name = list[1]->asSymbol()) {
-                    
-                    ValuePtr value = eval(list[2]);
-                    symbolTable_[*name] = value;
-                    return std::make_shared<NilValue>();
-                } else if (auto pair =
-                               std::dynamic_pointer_cast<PairValue>(list[1])) {
-                    // 处理函数定义 (define (f x) ...)
-                    throw LispError("Function definition not implemented");
-                } else {
-                    throw LispError(
-                        "Malformed define: expected symbol as variable name");
-                }
+        if (auto firstSym = list[0]->asSymbol()) {
+            auto it = SPECIAL_FORMS.find(*firstSym);
+            if (it != SPECIAL_FORMS.end()) {
+                // 移除特殊形式符号，处理剩余参数
+                std::vector<ValuePtr> formArgs(list.begin() + 1, list.end());
+                return it->second(formArgs, *this);
             }
         }
 
@@ -141,7 +149,15 @@ ValuePtr EvalEnv::apply(ValuePtr proc, std::vector<ValuePtr> args) {
     if (auto builtin = dynamic_cast<BuiltinProcValue*>(proc.get())) {
         // 关键修复：实际调用内置过程
         return builtin->getFunc()(args);
-    } else {
-        throw LispError("Unsupported procedure type");
     }
+    if (auto lambda = dynamic_cast<LambdaValue*>(proc.get())) {
+        return lambda->apply(args, *this);
+    }
+
+    throw LispError("Unsupported procedure type: " + proc->toString());
 }
+
+void EvalEnv::defineBinding(const std::string& name, ValuePtr value) {
+    symbolTable_[name] = value;
+}
+

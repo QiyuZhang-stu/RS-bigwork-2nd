@@ -3,15 +3,19 @@
 #include <cmath>
 #include <functional>
 #include <memory>
+#include <new>
+#include <utility>
 #include <optional>
 #include <string>
 #include <typeinfo>
 #include <vector>
-
+#include <unordered_map>
 #include "error.h"
 
 class Value;
 using ValuePtr = std::shared_ptr<Value>;
+class EvalEnv;
+class LambdaValue; 
 
 class Value {
 public:
@@ -25,7 +29,9 @@ public:
     virtual bool isNumber() const = 0;
     virtual bool isList() const = 0;
     virtual bool isPair() const = 0;
+    virtual bool isProcedure() const = 0;
     virtual const std::string& getString() const = 0;
+    operator std::vector<ValuePtr>() const;
 };
 
 class BooleanValue : public Value {
@@ -40,7 +46,9 @@ public:
     bool isNumber() const override;
     bool isList() const override;
     bool isPair() const override;
+    bool isProcedure() const override;
     const std::string& getString() const override;
+    bool getValue() const;
 
 private:
     bool value_;
@@ -58,6 +66,7 @@ public:
     bool isNumber() const override;
     bool isList() const override;
     bool isPair() const override;
+    bool isProcedure() const override;
     const std::string& getString() const override;
     double getValue() const;
 
@@ -77,6 +86,7 @@ public:
     bool isNumber() const override;
     bool isList() const override;
     bool isPair() const override;
+    bool isProcedure() const override;
     const std::string& getString() const override;
     const std::string& getValue() const;
 
@@ -96,6 +106,7 @@ public:
     bool isNumber() const override;
     bool isList() const override;
     bool isPair() const override;
+    bool isProcedure() const override;
     const std::string& getString() const override;
 };
 
@@ -111,15 +122,23 @@ public:
     bool isNumber() const override;
     bool isList() const override;
     bool isPair() const override;
+    bool isProcedure() const override;
     const std::string& getString() const override;
 
 private:
     std::string name_;
 };
 
-class PairValue : public Value {
+class PairValue : public Value, public std::enable_shared_from_this<PairValue> {
 public:
     PairValue(ValuePtr car, ValuePtr cdr);
+    PairValue(const std::vector<ValuePtr>& car, ValuePtr cdr);
+    explicit PairValue(ValuePtr car);
+    PairValue();
+
+    std::shared_ptr<PairValue> shared_from_this() {
+        return std::enable_shared_from_this<PairValue>::shared_from_this();
+    }
     std::string toString() const override;
     bool isSelfEvaluating() const override;
     bool isNil() const override;
@@ -129,6 +148,7 @@ public:
     bool isNumber() const override;
     bool isList() const override;
     bool isPair() const override;
+    bool isProcedure() const override;
     const std::string& getString() const override;
     ValuePtr getCar() const;
     ValuePtr getCdr() const;
@@ -153,6 +173,7 @@ public:
     bool isNumber() const override;
     bool isList() const override;
     bool isPair() const override;
+    bool isProcedure() const override;
     const std::string& getString() const override;
     BuiltinFunc* getFunc() const;
     void setName(const std::string& name);
@@ -160,4 +181,31 @@ public:
 private:
     BuiltinFunc* func_;
     std::string name_;
+};
+
+class LambdaValue : public Value {
+public:
+    LambdaValue(std::vector<std::string> params, std::vector<ValuePtr> body,
+                std::shared_ptr<EvalEnv> env);
+
+    std::string toString() const override;
+
+    bool isProcedure() const override;
+    bool isSelfEvaluating() const override;
+    bool isNil() const override;
+    std::optional<std::string> asSymbol() const override;
+    std::vector<ValuePtr> toVector() const override;
+    double asNumber() const override;
+    bool isNumber() const override;
+    bool isList() const override;
+    bool isPair() const override;
+    const std::string& getString() const override;
+    
+    // 应用函数参数
+    ValuePtr apply(const std::vector<ValuePtr>& args, EvalEnv& callerEnv);
+
+private:
+    std::vector<std::string> params;
+    std::vector<ValuePtr> body;
+    std::shared_ptr<EvalEnv> closureEnv;  // 闭包环境
 };
