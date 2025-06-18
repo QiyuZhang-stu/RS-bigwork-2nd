@@ -23,7 +23,7 @@ struct TestCtx {
 };
 
 int main() {
-    RJSJ_TEST(TestCtx, Lv2, Lv3);
+    RJSJ_TEST(TestCtx, Lv2, Lv3,Lv4);
 
     EvalEnv env;
     while (true) {
@@ -36,7 +36,9 @@ int main() {
             Parser parser(std::move(tokens));
             auto value = parser.parse();
             auto result = env.eval(value);
-            std::cout << result->toString() << std::endl;
+            if (!result->isNil()) {
+                std::cout << result->toString() << std::endl;
+            }
         } catch (const SyntaxError& e) {
             std::cerr << "Syntax error: " << e.what() << std::endl;
         } catch (const LispError& e) {

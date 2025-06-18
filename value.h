@@ -1,91 +1,163 @@
 #pragma once
 
-
-#include <memory>
-#include <string>
 #include <cmath>
-#include <typeinfo>
+#include <functional>
+#include <memory>
 #include <optional>
+#include <string>
+#include <typeinfo>
 #include <vector>
+
 #include "error.h"
 
-class Value; 
-
-using ValuePtr = std::shared_ptr<Value>; 
+class Value;
+using ValuePtr = std::shared_ptr<Value>;
 
 class Value {
 public:
     virtual ~Value() = default;
     virtual std::string toString() const = 0;
-    virtual bool isSelfEvaluating() const {
-        return false;
-    }
-    virtual bool isNil() const {
-        return false;
-    }
-    virtual std::optional<std::string> asSymbol() const {
-        return std::nullopt;
-    }
-    virtual std::vector<std::shared_ptr<Value>> toVector() const {
-        throw std::runtime_error("Value cannot be converted to vector");
-    }
+    virtual bool isSelfEvaluating() const = 0;
+    virtual bool isNil() const = 0;
+    virtual std::optional<std::string> asSymbol() const = 0;
+    virtual std::vector<ValuePtr> toVector() const = 0;
+    virtual double asNumber() const = 0;
+    virtual bool isNumber() const = 0;
+    virtual bool isList() const = 0;
+    virtual bool isPair() const = 0;
+    virtual const std::string& getString() const = 0;
 };
 
 class BooleanValue : public Value {
+public:
+    explicit BooleanValue(bool value);
+    std::string toString() const override;
+    bool isSelfEvaluating() const override;
+    bool isNil() const override;
+    std::optional<std::string> asSymbol() const override;
+    std::vector<ValuePtr> toVector() const override;
+    double asNumber() const override;
+    bool isNumber() const override;
+    bool isList() const override;
+    bool isPair() const override;
+    const std::string& getString() const override;
+
 private:
     bool value_;
-
-public:
-    explicit BooleanValue(bool value) : value_(value) {}
-    bool isSelfEvaluating() const;
-    std::string toString() const override;
 };
 
 class NumericValue : public Value {
+public:
+    explicit NumericValue(double value);
+    std::string toString() const override;
+    bool isSelfEvaluating() const override;
+    bool isNil() const override;
+    std::optional<std::string> asSymbol() const override;
+    std::vector<ValuePtr> toVector() const override;
+    double asNumber() const override;
+    bool isNumber() const override;
+    bool isList() const override;
+    bool isPair() const override;
+    const std::string& getString() const override;
+    double getValue() const;
+
 private:
     double value_;
-
-public:
-    explicit NumericValue(double value) : value_(value) {}
-    bool isSelfEvaluating() const;
-    std::string toString() const override;
 };
 
 class StringValue : public Value {
+public:
+    explicit StringValue(std::string value);
+    std::string toString() const override;
+    bool isSelfEvaluating() const override;
+    bool isNil() const override;
+    std::optional<std::string> asSymbol() const override;
+    std::vector<ValuePtr> toVector() const override;
+    double asNumber() const override;
+    bool isNumber() const override;
+    bool isList() const override;
+    bool isPair() const override;
+    const std::string& getString() const override;
+    const std::string& getValue() const;
+
 private:
     std::string value_;
-
-public:
-    explicit StringValue(std::string value) : value_(std::move(value)) {}
-    bool isSelfEvaluating() const;
-    std::string toString() const override;
 };
 
 class NilValue : public Value {
 public:
-    NilValue() = default;
-    bool isNil() const;
+    NilValue();
     std::string toString() const override;
+    bool isSelfEvaluating() const override;
+    bool isNil() const override;
+    std::optional<std::string> asSymbol() const override;
+    std::vector<ValuePtr> toVector() const override;
+    double asNumber() const override;
+    bool isNumber() const override;
+    bool isList() const override;
+    bool isPair() const override;
+    const std::string& getString() const override;
 };
 
 class SymbolValue : public Value {
+public:
+    explicit SymbolValue(std::string name);
+    std::string toString() const override;
+    bool isSelfEvaluating() const override;
+    bool isNil() const override;
+    std::optional<std::string> asSymbol() const override;
+    std::vector<ValuePtr> toVector() const override;
+    double asNumber() const override;
+    bool isNumber() const override;
+    bool isList() const override;
+    bool isPair() const override;
+    const std::string& getString() const override;
+
 private:
     std::string name_;
-
-public:
-    explicit SymbolValue(std::string name) : name_(std::move(name)) {}
-    std::optional<std::string> asSymbol() const;
-    std::string toString() const override;
 };
 
 class PairValue : public Value {
-private:
-    std::shared_ptr<Value> car_;
-    std::shared_ptr<Value> cdr_;
-
 public:
-    PairValue(std::shared_ptr<Value> car, std::shared_ptr<Value> cdr)
-        : car_(std::move(car)), cdr_(std::move(cdr)) {}
-    std::vector<std::shared_ptr<Value>> toVector() const;
+    PairValue(ValuePtr car, ValuePtr cdr);
     std::string toString() const override;
+    bool isSelfEvaluating() const override;
+    bool isNil() const override;
+    std::optional<std::string> asSymbol() const override;
+    std::vector<ValuePtr> toVector() const override;
+    double asNumber() const override;
+    bool isNumber() const override;
+    bool isList() const override;
+    bool isPair() const override;
+    const std::string& getString() const override;
+    ValuePtr getCar() const;
+    ValuePtr getCdr() const;
+
+private:
+    ValuePtr car_;
+    ValuePtr cdr_;
+};
+
+class BuiltinProcValue : public Value {
+public:
+    using BuiltinFunc = ValuePtr(const std::vector<ValuePtr>&);
+
+    explicit BuiltinProcValue(BuiltinFunc* func,
+                              std::string name = "#<procedure>");
+    std::string toString() const override;
+    bool isSelfEvaluating() const override;
+    bool isNil() const override;
+    std::optional<std::string> asSymbol() const override;
+    std::vector<ValuePtr> toVector() const override;
+    double asNumber() const override;
+    bool isNumber() const override;
+    bool isList() const override;
+    bool isPair() const override;
+    const std::string& getString() const override;
+    BuiltinFunc* getFunc() const;
+    void setName(const std::string& name);
+
+private:
+    BuiltinFunc* func_;
+    std::string name_;
 };
