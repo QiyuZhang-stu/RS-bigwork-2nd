@@ -6,20 +6,24 @@
 #include "builtins.h"
 #include "forms.h"
 
+std::shared_ptr<EvalEnv> EvalEnv::createGlobal() {
+    auto env = std::shared_ptr<EvalEnv>(new EvalEnv());
+    env->initializeBuiltins();
+    return env;
+}
 
-// 安全地从栈环境创建共享指针
-std::shared_ptr<EvalEnv> EvalEnv::createSharedFromThis() {
-    return shared_from_this();
+std::shared_ptr<EvalEnv> EvalEnv::createChild() {
+    // 使用 new 而不是 make_shared
+    return std::shared_ptr<EvalEnv>(new EvalEnv(shared_from_this()));
 }
 
 EvalEnv::EvalEnv() : parent_(nullptr) {
-    initializeBuiltins();
+    // 内置函数在createGlobal()中初始化
 }
 
 EvalEnv::EvalEnv(const std::shared_ptr<EvalEnv>& parent) : parent_(parent) {
     // 子环境初始化逻辑
 }
-
 
 
 

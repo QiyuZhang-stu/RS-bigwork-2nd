@@ -486,7 +486,7 @@ ValuePtr LambdaValue::apply(const std::vector<ValuePtr>& args,
     }
 
     // 创建新的求值环境（基于闭包环境）
-    auto env = std::make_shared<EvalEnv>(closureEnv);
+    auto env = closureEnv->createChild();
 
     // 绑定参数
     for (size_t i = 0; i < params.size(); i++) {

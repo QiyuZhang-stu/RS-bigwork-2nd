@@ -100,7 +100,7 @@ ValuePtr lambdaForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
 
     // 解析参数列表
     auto paramsValue = args[0];
-    if (!paramsValue->isList() || !paramsValue->toVector().empty()) {
+    if (!paramsValue->isList()) {
         throw LispError("Lambda parameter list must be a list");
     }
 
@@ -120,22 +120,17 @@ ValuePtr lambdaForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
         body.push_back(args[i]);
     }
 
-
-     // 安全创建环境共享指针
-    auto envPtr = env.createSharedFromThis();
-
-    // 创建闭包并返回
-    return std::make_shared<LambdaValue>(params, body, envPtr);
+     auto envPtr = env.getSharedPtr();  // 使用新增的 getSharedPtr 方法
+    auto childEnv = envPtr->createChild();
+    return std::make_shared<LambdaValue>(params, body, childEnv);
 }
 
 ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
-    // 检查参数数量
-    
     if (args.size() != 2) {
         throw LispError("define requires exactly 2 arguments");
     }
 
-    // 处理函数定义: (define (f x) ...)
+    // 函数定义：(define (f x) ...)
     if (auto pair = dynamic_cast<PairValue*>(args[0].get())) {
         auto list = args[0]->toVector();
         if (list.empty()) {
@@ -149,26 +144,39 @@ ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
         }
 
         // 构造参数列表
-        std::vector<ValuePtr> params;
+        std::vector<std::string> params;
         if (list.size() > 1) {
-            params.insert(params.end(), list.begin() + 1, list.end());
+            for (size_t i = 1; i < list.size(); i++) {
+                if (auto paramName = list[i]->asSymbol()) {
+                    params.push_back(*paramName);
+                } else {
+                    throw LispError("Function parameter must be a symbol");
+                }
+            }
         }
 
-        // 构建 lambda 表达式
+        // 构建参数列表 (符号列表)
+        ValuePtr paramList = std::make_shared<NilValue>();
+        for (auto it = params.rbegin(); it != params.rend(); ++it) {
+            auto symbol = std::make_shared<SymbolValue>(*it);
+            paramList = std::make_shared<PairValue>(symbol, paramList);
+        }
+
+        // 构建 lambda 表达式参数
         auto lambdaArgs = std::vector<ValuePtr>();
-        lambdaArgs.push_back(
-            std::make_shared<PairValue>(params, std::make_shared<NilValue>()));
+        lambdaArgs.push_back(paramList);
         lambdaArgs.push_back(args[1]);
 
-        // 创建 lambda 值并绑定到函数名
+        // 创建 lambda 值
         auto lambda = lambdaForm(lambdaArgs, env);
+
+        // 绑定函数名
         env.defineBinding(*funcName, lambda);
         return std::make_shared<NilValue>();
     }
 
-    // 处理变量定义: (define x 42)
+    // 变量定义：(define x 42)
     if (auto name = args[0]->asSymbol()) {
-        // 求值并绑定变量
         auto value = env.eval(args[1]);
         env.defineBinding(*name, value);
         return std::make_shared<NilValue>();
