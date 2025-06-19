@@ -4,18 +4,19 @@
 #include <functional>
 #include <memory>
 #include <new>
-#include <utility>
 #include <optional>
 #include <string>
 #include <typeinfo>
-#include <vector>
 #include <unordered_map>
+#include <utility>
+#include <vector>
+
 #include "error.h"
 
 class Value;
 using ValuePtr = std::shared_ptr<Value>;
 class EvalEnv;
-class LambdaValue; 
+class LambdaValue;
 
 class Value {
 public:
@@ -29,8 +30,21 @@ public:
     virtual bool isNumber() const = 0;
     virtual bool isList() const = 0;
     virtual bool isPair() const = 0;
+    virtual bool isString() const = 0;
     virtual bool isProcedure() const = 0;
     virtual const std::string& getString() const = 0;
+
+    // 新增方法
+    virtual bool isBoolean() const = 0;
+    virtual bool getValue() const;  // 获取布尔值
+    virtual bool isSymbol() const = 0;
+    virtual ValuePtr getCar() const {
+        throw LispError("Cannot get car of non-pair value");
+    }
+
+    virtual ValuePtr getCdr() const {
+        throw LispError("Cannot get cdr of non-pair value");
+    }
     operator std::vector<ValuePtr>() const;
 };
 
@@ -46,9 +60,14 @@ public:
     bool isNumber() const override;
     bool isList() const override;
     bool isPair() const override;
+    bool isString() const override;
     bool isProcedure() const override;
     const std::string& getString() const override;
-    bool getValue() const;
+
+    // 新增方法实现
+    bool isBoolean() const override;
+    bool getValue() const override;
+    bool isSymbol() const override;
 
 private:
     bool value_;
@@ -66,9 +85,15 @@ public:
     bool isNumber() const override;
     bool isList() const override;
     bool isPair() const override;
+    bool isString() const override;
     bool isProcedure() const override;
     const std::string& getString() const override;
-    double getValue() const;
+
+    // 新增方法实现
+    bool isBoolean() const override;
+    bool getValue() const override;
+    bool isSymbol() const override;
+    double getNumberValue() const;
 
 private:
     double value_;
@@ -86,9 +111,15 @@ public:
     bool isNumber() const override;
     bool isList() const override;
     bool isPair() const override;
+    bool isString() const override;
     bool isProcedure() const override;
     const std::string& getString() const override;
-    const std::string& getValue() const;
+
+    // 新增方法实现
+    bool isBoolean() const override;
+    bool getValue() const override;
+    bool isSymbol() const override;
+    const std::string& getStringValue() const;
 
 private:
     std::string value_;
@@ -106,8 +137,14 @@ public:
     bool isNumber() const override;
     bool isList() const override;
     bool isPair() const override;
+    bool isString() const override;
     bool isProcedure() const override;
     const std::string& getString() const override;
+
+    // 新增方法实现
+    bool isBoolean() const override;
+    bool getValue() const override;
+    bool isSymbol() const override;
 };
 
 class SymbolValue : public Value {
@@ -122,8 +159,14 @@ public:
     bool isNumber() const override;
     bool isList() const override;
     bool isPair() const override;
+    bool isString() const override;
     bool isProcedure() const override;
     const std::string& getString() const override;
+
+    // 新增方法实现
+    bool isBoolean() const override;
+    bool getValue() const override;
+    bool isSymbol() const override;
 
 private:
     std::string name_;
@@ -146,11 +189,19 @@ public:
     std::vector<ValuePtr> toVector() const override;
     double asNumber() const override;
     bool isNumber() const override;
+
     bool isList() const override;
     bool isPair() const override;
+    bool isString() const override;
     bool isProcedure() const override;
     const std::string& getString() const override;
-    ValuePtr getCar() const;
+
+    // 新增方法实现
+    bool isBoolean() const override;
+    bool getValue() const override;
+    bool isSymbol() const override;
+
+    ValuePtr getCar() const override;
     ValuePtr getCdr() const;
 
 private:
@@ -160,7 +211,7 @@ private:
 
 class BuiltinProcValue : public Value {
 public:
-    using BuiltinFunc = ValuePtr(const std::vector<ValuePtr>&);
+    using BuiltinFunc = ValuePtr(const std::vector<ValuePtr>&, EvalEnv&);
 
     explicit BuiltinProcValue(BuiltinFunc* func,
                               std::string name = "#<procedure>");
@@ -173,8 +224,15 @@ public:
     bool isNumber() const override;
     bool isList() const override;
     bool isPair() const override;
+    bool isString() const override;
     bool isProcedure() const override;
     const std::string& getString() const override;
+
+    // 新增方法实现
+    bool isBoolean() const override;
+    bool getValue() const override;
+    bool isSymbol() const override;
+
     BuiltinFunc* getFunc() const;
     void setName(const std::string& name);
 
@@ -199,8 +257,13 @@ public:
     bool isNumber() const override;
     bool isList() const override;
     bool isPair() const override;
+    bool isString() const override;
     const std::string& getString() const override;
-    
+
+    // 新增方法实现
+    bool isBoolean() const override;
+    bool getValue() const override;
+    bool isSymbol() const override;
     // 应用函数参数
     ValuePtr apply(const std::vector<ValuePtr>& args, EvalEnv& callerEnv);
 

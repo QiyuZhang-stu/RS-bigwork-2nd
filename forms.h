@@ -22,6 +22,8 @@ ValuePtr andForm(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr orForm(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr lambdaForm(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env);
-
+ValuePtr condForm(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr quasiquoteForm(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr beginForm(const std::vector<ValuePtr>& args, EvalEnv& env);
 
 #endif  // FORMS_H

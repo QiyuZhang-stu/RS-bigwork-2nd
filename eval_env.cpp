@@ -64,7 +64,11 @@ void EvalEnv::initializeBuiltins() {
         std::make_shared<BuiltinProcValue>(length, "length");
     symbolTable_["list"] = std::make_shared<BuiltinProcValue>(list, "list");
 
-    // 系统操作
+    
+    symbolTable_[">"] = std::make_shared<BuiltinProcValue>(greaterThan, ">");
+
+
+
     symbolTable_["exit"] = std::make_shared<BuiltinProcValue>(exitFunc, "exit");
 }
 
@@ -152,7 +156,7 @@ std::vector<ValuePtr> EvalEnv::evalList(ValuePtr expr) {
 ValuePtr EvalEnv::apply(ValuePtr proc, std::vector<ValuePtr> args) {
     if (auto builtin = dynamic_cast<BuiltinProcValue*>(proc.get())) {
         // 关键修复：实际调用内置过程
-        return builtin->getFunc()(args);
+        return builtin->getFunc()(args,*this);
     }
     if (auto lambda = dynamic_cast<LambdaValue*>(proc.get())) {
         return lambda->apply(args, *this);

@@ -3,9 +3,8 @@
 #include <cmath>
 #include <iomanip>
 #include <sstream>
+
 #include "eval_env.h"
-
-
 
 Value::operator std::vector<ValuePtr>() const {
     if (this->isList()) {
@@ -14,6 +13,20 @@ Value::operator std::vector<ValuePtr>() const {
     throw std::runtime_error("Cannot convert non-list value to vector");
 }
 
+// 基类默认实现
+bool Value::getValue() const {
+    throw LispError("Value is not a boolean");
+}
+
+bool Value::isSymbol() const {
+    return false;
+}
+
+// SymbolValue 的具体实现
+bool SymbolValue::isSymbol() const {
+    return true;
+}
+// ===== BooleanValue实现 =====
 BooleanValue::BooleanValue(bool value) : value_(value) {}
 
 std::string BooleanValue::toString() const {
@@ -28,8 +41,16 @@ bool BooleanValue::isNil() const {
     return false;
 }
 
+bool BooleanValue::isBoolean() const {
+    return true;
+}
+
 bool BooleanValue::getValue() const {
     return value_;
+}
+
+bool BooleanValue::isSymbol() const {
+    return false;
 }
 
 std::optional<std::string> BooleanValue::asSymbol() const {
@@ -56,6 +77,10 @@ bool BooleanValue::isPair() const {
     return false;
 }
 
+bool BooleanValue::isString() const {
+    return false;
+}
+
 bool BooleanValue::isProcedure() const {
     return false;
 }
@@ -63,7 +88,6 @@ bool BooleanValue::isProcedure() const {
 const std::string& BooleanValue::getString() const {
     throw LispError("Boolean is not a string");
 }
-
 
 // ===== NumericValue实现 =====
 NumericValue::NumericValue(double value) : value_(value) {}
@@ -84,6 +108,18 @@ bool NumericValue::isSelfEvaluating() const {
 }
 
 bool NumericValue::isNil() const {
+    return false;
+}
+
+bool NumericValue::isBoolean() const {
+    return false;
+}
+
+bool NumericValue::getValue() const {
+    throw LispError("Numeric value is not a boolean");
+}
+
+bool NumericValue::isSymbol() const {
     return false;
 }
 
@@ -111,6 +147,10 @@ bool NumericValue::isPair() const {
     return false;
 }
 
+bool NumericValue::isString() const {
+    return false;
+}
+
 bool NumericValue::isProcedure() const {
     return false;
 }
@@ -119,7 +159,7 @@ const std::string& NumericValue::getString() const {
     throw LispError("Number is not a string");
 }
 
-double NumericValue::getValue() const {
+double NumericValue::getNumberValue() const {
     return value_;
 }
 
@@ -148,10 +188,17 @@ bool StringValue::isNil() const {
     return false;
 }
 
+bool StringValue::isBoolean() const {
+    return false;
+}
 
+bool StringValue::getValue() const {
+    throw LispError("String value is not a boolean");
+}
 
-
-
+bool StringValue::isSymbol() const {
+    return false;
+}
 
 std::optional<std::string> StringValue::asSymbol() const {
     return std::nullopt;
@@ -177,6 +224,10 @@ bool StringValue::isPair() const {
     return false;
 }
 
+bool StringValue::isString() const {
+    return false;
+}
+
 bool StringValue::isProcedure() const {
     return false;
 }
@@ -185,7 +236,7 @@ const std::string& StringValue::getString() const {
     return value_;
 }
 
-const std::string& StringValue::getValue() const {
+const std::string& StringValue::getStringValue() const {
     return value_;
 }
 
@@ -202,6 +253,18 @@ bool NilValue::isSelfEvaluating() const {
 
 bool NilValue::isNil() const {
     return true;
+}
+
+bool NilValue::isBoolean() const {
+    return false;
+}
+
+bool NilValue::getValue() const {
+    throw LispError("Nil value is not a boolean");
+}
+
+bool NilValue::isSymbol() const {
+    return false;
 }
 
 std::optional<std::string> NilValue::asSymbol() const {
@@ -228,6 +291,10 @@ bool NilValue::isPair() const {
     return false;
 }
 
+bool NilValue::isString() const {
+    return false;
+}
+
 bool NilValue::isProcedure() const {
     return false;
 }
@@ -249,6 +316,14 @@ bool SymbolValue::isSelfEvaluating() const {
 
 bool SymbolValue::isNil() const {
     return false;
+}
+
+bool SymbolValue::isBoolean() const {
+    return false;
+}
+
+bool SymbolValue::getValue() const {
+    throw LispError("Symbol value is not a boolean");
 }
 
 std::optional<std::string> SymbolValue::asSymbol() const {
@@ -275,6 +350,10 @@ bool SymbolValue::isPair() const {
     return false;
 }
 
+bool SymbolValue::isString() const {
+    return false;
+}
+
 bool SymbolValue::isProcedure() const {
     return false;
 }
@@ -297,12 +376,12 @@ PairValue::PairValue(const std::vector<ValuePtr>& car_list, ValuePtr cdr) {
     car_ = current;
     cdr_ = cdr;
 }
+
 PairValue::PairValue(ValuePtr car)
     : car_(std::move(car)), cdr_(std::make_shared<NilValue>()) {}
 
 PairValue::PairValue()
     : car_(std::make_shared<NilValue>()), cdr_(std::make_shared<NilValue>()) {}
-
 
 std::string PairValue::toString() const {
     std::ostringstream oss;
@@ -332,6 +411,18 @@ bool PairValue::isNil() const {
     return false;
 }
 
+bool PairValue::isBoolean() const {
+    return false;
+}
+
+bool PairValue::getValue() const {
+    throw LispError("Pair value is not a boolean");
+}
+
+bool PairValue::isSymbol() const {
+    return false;
+}
+
 std::optional<std::string> PairValue::asSymbol() const {
     return std::nullopt;
 }
@@ -347,7 +438,6 @@ std::vector<ValuePtr> PairValue::toVector() const {
     return result;
 }
 
-
 double PairValue::asNumber() const {
     throw LispError("Pair is not a number");
 }
@@ -362,6 +452,10 @@ bool PairValue::isList() const {
 
 bool PairValue::isPair() const {
     return true;
+}
+
+bool PairValue::isString() const {
+    return false;
 }
 
 bool PairValue::isProcedure() const {
@@ -396,6 +490,18 @@ bool BuiltinProcValue::isNil() const {
     return false;
 }
 
+bool BuiltinProcValue::isBoolean() const {
+    return false;
+}
+
+bool BuiltinProcValue::getValue() const {
+    throw LispError("Procedure value is not a boolean");
+}
+
+bool BuiltinProcValue::isSymbol() const {
+    return false;
+}
+
 std::optional<std::string> BuiltinProcValue::asSymbol() const {
     return std::nullopt;
 }
@@ -420,6 +526,10 @@ bool BuiltinProcValue::isPair() const {
     return false;
 }
 
+bool BuiltinProcValue::isString() const {
+    return false;
+}
+
 const std::string& BuiltinProcValue::getString() const {
     throw LispError("Procedure is not a string");
 }
@@ -436,7 +546,7 @@ bool BuiltinProcValue::isProcedure() const {
     return true;
 }
 
-
+// ===== LambdaValue实现 =====
 LambdaValue::LambdaValue(std::vector<std::string> params,
                          std::vector<ValuePtr> body,
                          std::shared_ptr<EvalEnv> env)
@@ -445,33 +555,59 @@ LambdaValue::LambdaValue(std::vector<std::string> params,
 bool LambdaValue::isSelfEvaluating() const {
     return false;
 }
+
 bool LambdaValue::isNil() const {
     return false;
 }
+
+bool LambdaValue::isBoolean() const {
+    return false;
+}
+
+bool LambdaValue::getValue() const {
+    throw LispError("Lambda value is not a boolean");
+}
+
+bool LambdaValue::isSymbol() const {
+    return false;
+}
+
 std::optional<std::string> LambdaValue::asSymbol() const {
     return std::nullopt;
 }
+
 std::vector<ValuePtr> LambdaValue::toVector() const {
     throw std::runtime_error("procedure cannot be converted to vector");
 }
+
 double LambdaValue::asNumber() const {
     throw LispError("procedure is not a number");
 }
+
 bool LambdaValue::isNumber() const {
     return false;
 }
+
 bool LambdaValue::isList() const {
     return false;
 }
+
 bool LambdaValue::isPair() const {
     return false;
 }
+
+bool LambdaValue::isString() const {
+    return false;
+}
+
 const std::string& LambdaValue::getString() const {
     throw LispError("procedure is not a string");
 }
+
 bool LambdaValue::isProcedure() const {
     return true;
 }
+
 std::string LambdaValue::toString() const {
     return "#<procedure>";
 }

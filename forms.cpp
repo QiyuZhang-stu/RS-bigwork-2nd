@@ -1,20 +1,7 @@
 #include "forms.h"
 
 #include "error.h"
-
-// 特殊形式映射表定义
-const std::unordered_map<std::string, SpecialFormType> SPECIAL_FORMS = {
-    {"quote", quoteForm}, 
-    {"if", ifForm},         
-    {"and", andForm},
-    {"or", orForm},       
-    {"lambda", lambdaForm}, 
-    {"define", defineForm}
-};
-
-
-
-// ================= 特殊形式实现 =================
+#include "builtins.h"
 
 ValuePtr quoteForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() != 1) {
@@ -165,7 +152,10 @@ ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
         // 构建 lambda 表达式参数
         auto lambdaArgs = std::vector<ValuePtr>();
         lambdaArgs.push_back(paramList);
-        lambdaArgs.push_back(args[1]);
+        for (size_t i = 1; i < args.size(); i++) {
+            lambdaArgs.push_back(args[i]);
+        }
+
 
         // 创建 lambda 值
         auto lambda = lambdaForm(lambdaArgs, env);
@@ -184,3 +174,161 @@ ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
 
     throw LispError("Invalid define form");
 }
+
+ValuePtr condForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    for (auto& clause : args) {
+        if (!clause->isList()) {
+            throw LispError("cond clause must be a list");
+        }
+
+        auto clauseItems = clause->toVector();
+        if (clauseItems.empty()) {
+            throw LispError("cond clause cannot be empty");
+        }
+
+        ValuePtr test = clauseItems[0];
+        ValuePtr testResult;
+
+        // 处理 else 情况
+        if (auto sym = test->asSymbol()) {
+            if (*sym == "else") {
+                testResult = std::make_shared<BooleanValue>(true);
+            }
+        }
+
+        if (!testResult) {
+            testResult = env.eval(test);
+        }
+
+        if (!testResult->isNil() &&
+            (!testResult->isBoolean() || testResult->getValue())) {
+            // 执行当前子句
+            ValuePtr result = std::make_shared<NilValue>();
+
+            // 执行所有表达式（如果有）
+            if (clauseItems.size() > 1) {
+                for (size_t i = 1; i < clauseItems.size(); i++) {
+                    result = env.eval(clauseItems[i]);
+                }
+                return result;
+            }
+
+            // 没有表达式则返回测试结果
+            return testResult;
+        }
+    }
+    return std::make_shared<NilValue>();
+}
+
+ValuePtr beginForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    ValuePtr result = std::make_shared<NilValue>();
+    for (auto& expr : args) {
+        result = env.eval(expr);
+    }
+    return result;
+}
+
+ValuePtr letForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    if (args.empty()) throw LispError("let requires at least one argument");
+
+    auto bindings = args[0];
+    if (!bindings->isList()) {
+        throw LispError("let bindings must be a list");
+    }
+
+    // 解析绑定
+    std::vector<std::string> names;
+    std::vector<ValuePtr> values;
+
+    for (auto& binding : bindings->toVector()) {
+        if (!binding->isPair()) {
+            throw LispError("binding must be a pair");
+        }
+
+        auto bindingItems = binding->toVector();
+        if (bindingItems.size() != 2) {
+            throw LispError("binding must be (name value)");
+        }
+
+        if (auto name = bindingItems[0]->asSymbol()) {
+            names.push_back(*name);
+            // 在当前环境中求值绑定值
+            values.push_back(env.eval(bindingItems[1]));
+        } else {
+            throw LispError("binding name must be a symbol");
+        }
+    }
+
+    // 创建新环境（使用正确的 createChild 方法）
+    auto newEnv = env.createChild();
+
+    // 在新环境中添加绑定
+    for (size_t i = 0; i < names.size(); i++) {
+        newEnv->defineBinding(names[i], values[i]);
+    }
+
+    // 执行表达式
+    ValuePtr result = std::make_shared<NilValue>();
+    for (size_t i = 1; i < args.size(); i++) {
+        result = newEnv->eval(args[i]);
+    }
+    return result;
+}
+ValuePtr quasiquoteExpand(ValuePtr expr, EvalEnv& env) {
+    // 处理 unquote
+    if (expr->isPair() && expr->getCar()->isSymbol() &&
+        expr->getCar()->asSymbol() == "unquote") {
+        auto unquoted = expr->toVector();
+        if (unquoted.size() != 2) {
+            throw LispError("unquote requires exactly one argument");
+        }
+        return env.eval(unquoted[1]);
+    }
+
+    // 递归处理列表
+    if (expr->isPair()) {
+        ValuePtr list = expr;
+        ValuePtr result = std::make_shared<NilValue>();
+        std::vector<ValuePtr> elements;
+
+        while (!list->isNil()) {
+            if (auto pair = std::dynamic_pointer_cast<PairValue>(list)) {
+                auto expanded = quasiquoteExpand(pair->getCar(), env);
+                elements.push_back(expanded);
+                list = pair->getCdr();
+            } else {
+                elements.push_back(quasiquoteExpand(list, env));
+                break;
+            }
+        }
+
+        for (auto it = elements.rbegin(); it != elements.rend(); ++it) {
+            result = std::make_shared<PairValue>(*it, result);
+        }
+        return result;
+    }
+
+    // 其他情况直接返回
+    return expr;
+}
+
+ValuePtr quasiquoteForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    if (args.size() != 1) {
+        throw LispError("quasiquote requires exactly one argument");
+    }
+    return quasiquoteExpand(args[0], env);
+}
+
+
+const std::unordered_map<std::string, SpecialFormType> SPECIAL_FORMS = {
+    {"quote", quoteForm}, 
+    {"if", ifForm},         
+    {"and", andForm},
+    {"or", orForm},       
+    {"lambda", lambdaForm}, 
+    {"define", defineForm},
+    {"cond", condForm},
+    {"begin", beginForm},   
+    {"let", letForm},       
+    {"quasiquote", quasiquoteForm}
+};
