@@ -7,8 +7,7 @@
 #include "error.h"
 
     // ========== 辅助函数 ==========
-    double
-    asNumber(ValuePtr arg) {
+double asNumber(ValuePtr arg) {
     if (!arg->isNumber()) {
         throw LispError("Expected a number");
     }
@@ -16,13 +15,36 @@
 }
 
 // ========== 核心库 ==========
-ValuePtr apply(const std::vector<ValuePtr>& args, EvalEnv& env) {
-    if (args.size() != 2) throw LispError("apply requires two arguments");
-    auto proc = args[0];
-    auto argList = args[1]->toVector();
-    return env.apply(proc, argList);
-}
+ValuePtr applyFunc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    if (args.size() < 2) {
+        throw LispError("apply requires at least two arguments");
+    }
 
+    // 1. 获取要应用的函数
+    ValuePtr proc = args[0];
+    if (!proc->isProcedure()) {
+        throw LispError("First argument to apply must be a procedure");
+    }
+
+    // 2. 收集所有独立参数
+    std::vector<ValuePtr> appliedArgs;
+    for (size_t i = 1; i < args.size() - 1; i++) {
+        appliedArgs.push_back(args[i]);
+    }
+
+    // 3. 处理最后一个参数（必须是列表）
+    ValuePtr lastArg = args.back();
+    if (!lastArg->isList()) {
+        throw LispError("Last argument to apply must be a list");
+    }
+
+    // 4. 将列表参数展开
+    auto lastArgs = lastArg->toVector();
+    appliedArgs.insert(appliedArgs.end(), lastArgs.begin(), lastArgs.end());
+
+    // 5. 执行函数调用
+    return env.apply(proc, appliedArgs);
+}
 ValuePtr display(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.empty()) return std::make_shared<NilValue>();
 
@@ -49,7 +71,7 @@ ValuePtr error(const std::vector<ValuePtr>& args, EvalEnv& env) {
     throw LispError(message);
 }
 
-ValuePtr eval(const std::vector<ValuePtr>& args, EvalEnv& env) {
+ValuePtr evalFunc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() != 1) throw LispError("eval requires one argument");
     return env.eval(args[0]);
 }
@@ -78,9 +100,16 @@ ValuePtr print(const std::vector<ValuePtr>& args, EvalEnv& env) {
 ValuePtr isAtom(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() != 1) throw LispError("atom? requires one argument");
     auto value = args[0];
-    return std::make_shared<BooleanValue>(
-        value->isBoolean() || value->isNumber() || value->isString() ||
-        value->isSymbol() || value->isNil());
+
+    // 修复字符串识别问题
+    bool isAtom = value->isBoolean() || value->isNumber() ||
+                  value->isString() ||  // 确保字符串被识别
+                  value->isSymbol() || value->isNil();
+
+    // 排除过程类型
+    if (value->isProcedure()) isAtom = false;
+
+    return std::make_shared<BooleanValue>(isAtom);
 }
 ValuePtr isBoolean(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() != 1) throw LispError("boolean? requires one argument");
@@ -136,7 +165,12 @@ ValuePtr isProcedure(const std::vector<ValuePtr>& args, EvalEnv& env) {
 
 ValuePtr isString(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() != 1) throw LispError("string? requires one argument");
-    return std::make_shared<BooleanValue>(args[0]->isString());
+
+    // 核心修复：直接检查类型标签
+    return std::make_shared<BooleanValue>(
+        args[0]->toString().starts_with("\"") ||  // 快速检查引号
+        args[0]->isString()                       // 确保类型系统正确识别
+    );
 }
 
 ValuePtr isSymbol(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -367,7 +401,7 @@ ValuePtr modulo(const std::vector<ValuePtr>& args, EvalEnv& env) {
     return std::make_shared<NumericValue>(result);
 }
 
-ValuePtr remainder(const std::vector<ValuePtr>& args, EvalEnv& env) {
+ValuePtr remainderFunc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() != 2) throw LispError("remainder requires two arguments");
     double a = asNumber(args[0]);
     double b = asNumber(args[1]);
@@ -391,6 +425,11 @@ ValuePtr remainder(const std::vector<ValuePtr>& args, EvalEnv& env) {
 ValuePtr eqFunc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() != 2) throw LispError("eq? requires two arguments");
 
+
+    if (args[0]->isSymbol() && args[1]->isSymbol()) {
+        return std::make_shared<BooleanValue>(*args[0]->asSymbol() ==
+                                              *args[1]->asSymbol());
+    }
     // 数字和空列表特殊处理
     if (args[0]->isNumber() && args[1]->isNumber()) {
         return std::make_shared<BooleanValue>(args[0]->asNumber() ==
@@ -405,19 +444,20 @@ ValuePtr eqFunc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     // 默认比较对象地址
     return std::make_shared<BooleanValue>(args[0].get() == args[1].get());
 }
-ValuePtr equalFunc(const std::vector<ValuePtr>& args, EvalEnv& env) {
-    if (args.size() != 2) throw LispError("equal? requires two arguments");
-    return std::make_shared<BooleanValue>(args[0]->toString() ==
-                                          args[1]->toString());
-}
 
 ValuePtr notFunc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() != 1) throw LispError("not requires one argument");
+
+    // Scheme中只有 #f 为假，其他所有值都为真
+    // 使用 isBoolean() 和 toString() 结合判断
     if (args[0]->isBoolean()) {
-        return std::make_shared<BooleanValue>(!args[0]->getValue());
+        // 通过字符串表示判断布尔值
+        return std::make_shared<BooleanValue>(args[0]->toString() == "#f");
     }
-    return std::make_shared<BooleanValue>(args[0]->isNil());
+    return std::make_shared<BooleanValue>(false);
 }
+
+
 
 ValuePtr numEqual(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() < 2) throw LispError("= requires at least two arguments");
@@ -486,3 +526,76 @@ ValuePtr zeroPred(const std::vector<ValuePtr>& args, EvalEnv& env) {
     double n = asNumber(args[0]);
     return std::make_shared<BooleanValue>(n == 0.0);
 }
+
+ValuePtr equalFunc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    if (args.size() != 2) throw LispError("equal? requires two arguments");
+
+    // 使用 std::function 代替 auto 声明递归函数
+    std::function<bool(ValuePtr, ValuePtr)> deepEqual;
+    deepEqual = [&](ValuePtr a, ValuePtr b) -> bool {
+        // 类型不同直接返回false
+        if (a->getType() != b->getType()) return false;
+
+        // 特殊类型处理
+        if (a->isNil()) return b->isNil();
+        if (a->isBoolean()) return a->toString() == b->toString();
+        if (a->isNumber()) return a->asNumber() == b->asNumber();
+        if (a->isString()) return a->getString() == b->getString();
+        if (a->isSymbol()) return *a->asSymbol() == *b->asSymbol();
+
+        // 列表递归比较
+        if (a->isPair()) {
+            return deepEqual(a->getCar(), b->getCar()) &&
+                   deepEqual(a->getCdr(), b->getCdr());
+        }
+
+        // 其他类型使用指针比较
+        return a.get() == b.get();
+    };
+
+    return std::make_shared<BooleanValue>(deepEqual(args[0], args[1]));
+}
+ValuePtr countLeaves(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    if (args.size() != 1) throw LispError("count-leaves requires one argument");
+
+    std::function<int(ValuePtr)> count = [&](ValuePtr v) {
+        if (v->isNil()) return 0;
+        if (!v->isPair()) return 1;  // 非 pair 类型都是叶子
+
+        // 使用 Value 类现有接口遍历
+        int sum = 0;
+        ValuePtr current = v;
+        while (!current->isNil()) {
+            if (current->isPair()) {
+                sum += count(current->getCar());
+                current = current->getCdr();
+            } else {
+                sum += 1;  // 非列表的 cdr
+                break;
+            }
+        }
+        return sum;
+    };
+
+    return std::make_shared<NumericValue>(count(args[0]));
+}
+
+ValuePtr memqFunc(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    if (args.size() != 2) throw LispError("memq requires two arguments");
+
+    ValuePtr list = args[1];
+    while (list->isPair()) {
+        // 直接比较对象指针（实现真正eq?语义）
+        if (args[0].get() == list->getCar().get()) {
+            return list;
+        }
+        list = list->getCdr();
+    }
+
+    return std::make_shared<BooleanValue>(false);
+}
+// 辅助函数：实现 eq? 比较
+//ValuePtr eq(const ValuePtr& a, const ValuePtr& b) {
+//    // 同类型且内容相同（按需实现不同类型的比较）
+//    return std::make_shared<BooleanValue>(a->toString() == b->toString());
+//}

@@ -22,15 +22,15 @@ bool Value::isSymbol() const {
     return false;
 }
 
-// SymbolValue 的具体实现
-bool SymbolValue::isSymbol() const {
-    return true;
-}
 // ===== BooleanValue实现 =====
 BooleanValue::BooleanValue(bool value) : value_(value) {}
 
 std::string BooleanValue::toString() const {
     return value_ ? "#t" : "#f";
+}
+
+std::string BooleanValue::getType() const {
+    return "boolean";
 }
 
 bool BooleanValue::isSelfEvaluating() const {
@@ -50,6 +50,14 @@ bool BooleanValue::getValue() const {
 }
 
 bool BooleanValue::isSymbol() const {
+    return false;
+}
+
+bool BooleanValue::isTrue() const {
+    return false;
+}
+
+bool BooleanValue::operator==(const Value& other) const {
     return false;
 }
 
@@ -101,6 +109,10 @@ std::string NumericValue::toString() const {
     std::ostringstream oss;
     oss << std::setprecision(15) << value_;
     return oss.str();
+}
+
+std::string NumericValue::getType() const {
+    return "number";
 }
 
 bool NumericValue::isSelfEvaluating() const {
@@ -163,6 +175,17 @@ double NumericValue::getNumberValue() const {
     return value_;
 }
 
+bool NumericValue::isTrue() const {
+    return false;
+}
+
+bool NumericValue::operator==(const Value& other) const {
+    if (auto num = dynamic_cast<const NumericValue*>(&other)) {
+        return value_ == num->value_;
+    }
+    return false;
+}
+
 // ===== StringValue实现 =====
 StringValue::StringValue(std::string value) : value_(std::move(value)) {}
 
@@ -178,6 +201,10 @@ std::string StringValue::toString() const {
     }
     oss << '"';
     return oss.str();
+}
+
+std::string StringValue::getType() const {
+    return "string";
 }
 
 bool StringValue::isSelfEvaluating() const {
@@ -225,7 +252,7 @@ bool StringValue::isPair() const {
 }
 
 bool StringValue::isString() const {
-    return false;
+    return true;
 }
 
 bool StringValue::isProcedure() const {
@@ -240,11 +267,26 @@ const std::string& StringValue::getStringValue() const {
     return value_;
 }
 
+bool StringValue::isTrue() const {
+    return false;
+}
+
+bool StringValue::operator==(const Value& other) const {
+    if (auto str = dynamic_cast<const StringValue*>(&other)) {
+        return value_ == str->value_;
+    }
+    return false;
+}
+
 // ===== NilValue实现 =====
 NilValue::NilValue() = default;
 
 std::string NilValue::toString() const {
     return "()";
+}
+
+std::string NilValue::getType() const {
+    return "nil";
 }
 
 bool NilValue::isSelfEvaluating() const {
@@ -264,6 +306,14 @@ bool NilValue::getValue() const {
 }
 
 bool NilValue::isSymbol() const {
+    return false;
+}
+
+bool NilValue::isTrue() const {
+    return false;
+}
+
+bool NilValue::operator==(const Value& other) const {
     return false;
 }
 
@@ -310,6 +360,10 @@ std::string SymbolValue::toString() const {
     return name_;
 }
 
+std::string SymbolValue::getType() const {
+    return "symbol";
+}
+
 bool SymbolValue::isSelfEvaluating() const {
     return false;
 }
@@ -324,6 +378,18 @@ bool SymbolValue::isBoolean() const {
 
 bool SymbolValue::getValue() const {
     throw LispError("Symbol value is not a boolean");
+}
+
+bool SymbolValue::isSymbol() const {
+    return true;
+}
+
+bool SymbolValue::isTrue() const {
+    return false;
+}
+
+bool SymbolValue::operator==(const Value& other) const {
+    return false;
 }
 
 std::optional<std::string> SymbolValue::asSymbol() const {
@@ -403,6 +469,10 @@ std::string PairValue::toString() const {
     return oss.str();
 }
 
+std::string PairValue::getType() const {
+    return "pair";
+}
+
 bool PairValue::isSelfEvaluating() const {
     return false;
 }
@@ -420,6 +490,14 @@ bool PairValue::getValue() const {
 }
 
 bool PairValue::isSymbol() const {
+    return false;
+}
+
+bool PairValue::isTrue() const {
+    return false;
+}
+
+bool PairValue::operator==(const Value& other) const {
     return false;
 }
 
@@ -482,6 +560,10 @@ std::string BuiltinProcValue::toString() const {
     return "#<procedure>";
 }
 
+std::string BuiltinProcValue::getType() const {
+    return "builtin-procedure";
+}
+
 bool BuiltinProcValue::isSelfEvaluating() const {
     return true;
 }
@@ -499,6 +581,14 @@ bool BuiltinProcValue::getValue() const {
 }
 
 bool BuiltinProcValue::isSymbol() const {
+    return false;
+}
+
+bool BuiltinProcValue::isTrue() const {
+    return false;
+}
+
+bool BuiltinProcValue::operator==(const Value& other) const {
     return false;
 }
 
@@ -552,6 +642,10 @@ LambdaValue::LambdaValue(std::vector<std::string> params,
                          std::shared_ptr<EvalEnv> env)
     : params(std::move(params)), body(std::move(body)), closureEnv(env) {}
 
+std::string LambdaValue::getType() const {
+    return "lambda-procedure";
+}
+
 bool LambdaValue::isSelfEvaluating() const {
     return false;
 }
@@ -569,6 +663,14 @@ bool LambdaValue::getValue() const {
 }
 
 bool LambdaValue::isSymbol() const {
+    return false;
+}
+
+bool LambdaValue::isTrue() const {
+    return false;
+}
+
+bool LambdaValue::operator==(const Value& other) const {
     return false;
 }
 

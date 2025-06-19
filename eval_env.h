@@ -17,6 +17,7 @@ public:
     // 环境操作
     ValuePtr eval(ValuePtr expr);
     ValuePtr apply(ValuePtr proc, std::vector<ValuePtr> args);
+   
     void defineBinding(const std::string& name, ValuePtr value);
     ValuePtr lookup(const std::string& name);
 

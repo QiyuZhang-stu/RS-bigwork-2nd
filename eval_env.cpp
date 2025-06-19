@@ -68,8 +68,8 @@ void EvalEnv::initializeBuiltins() {
     symbolTable_["<="] = std::make_shared<BuiltinProcValue>(&lessOrEqual, "<=");
     symbolTable_[">="] =
         std::make_shared<BuiltinProcValue>(&greaterOrEqual, ">=");
-    /*symbolTable_["apply"] = std::make_shared<BuiltinProcValue>(&apply, "apply");
-  */  symbolTable_["displayln"] =
+    symbolTable_["apply"] = std::make_shared<BuiltinProcValue>(&applyFunc, "apply");
+    symbolTable_["displayln"] =
         std::make_shared<BuiltinProcValue>(&displayln, "displayln");
     symbolTable_["atom?"] =
         std::make_shared<BuiltinProcValue>(&isAtom, "atom?");
@@ -96,15 +96,17 @@ void EvalEnv::initializeBuiltins() {
         std::make_shared<BuiltinProcValue>(&quotient, "quotient");  // 整数除法
     symbolTable_["modulo"] =
         std::make_shared<BuiltinProcValue>(&modulo, "modulo");  // 模运算
-    //symbolTable_["remainder"] =
-    //    std::make_shared<BuiltinProcValue>(&remainder, "remainder");  // 余数
+    symbolTable_["remainder"] =
+        std::make_shared<BuiltinProcValue>(&remainderFunc, "remainder");  // 余数
     symbolTable_["exit"] = std::make_shared<BuiltinProcValue>(exitFunc, "exit");
     symbolTable_["append"] =
         std::make_shared<BuiltinProcValue>(&append, "append");
     symbolTable_["reduce"] =
         std::make_shared<BuiltinProcValue>(&reduce, "reduce");
     symbolTable_["error"] = std::make_shared<BuiltinProcValue>(&error, "error");
-    symbolTable_["eval"] = std::make_shared<BuiltinProcValue>(&eval, "eval");
+    symbolTable_["memq"] =
+        std::make_shared<BuiltinProcValue>(&memqFunc, "memq");
+    symbolTable_["eval"] = std::make_shared<BuiltinProcValue>(&evalFunc, "eval");
 }
 
 ValuePtr EvalEnv::lookup(const std::string& name) {
@@ -200,3 +202,5 @@ ValuePtr EvalEnv::apply(ValuePtr proc, std::vector<ValuePtr> args) {
 void EvalEnv::defineBinding(const std::string& name, ValuePtr value) {
     symbolTable_[name] = value;
 }
+
+

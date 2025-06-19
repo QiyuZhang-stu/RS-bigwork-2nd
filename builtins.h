@@ -7,11 +7,11 @@
 using BuiltinFunc = ValuePtr(const std::vector<ValuePtr>& args, EvalEnv& env);
 
 // 核心库
-ValuePtr apply(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr applyFunc(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr display(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr displayln(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr error(const std::vector<ValuePtr>& args, EvalEnv& env);
-ValuePtr eval(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr evalFunc(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr exitFunc(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr newline(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr print(const std::vector<ValuePtr>& args, EvalEnv& env);
@@ -48,7 +48,7 @@ ValuePtr absFunc(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr expt(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr quotient(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr modulo(const std::vector<ValuePtr>& args, EvalEnv& env);
-ValuePtr remainder(const std::vector<ValuePtr>& args, EvalEnv& env);
+ValuePtr remainderFunc(const std::vector<ValuePtr>& args, EvalEnv& env);
 
 // 比较库
 ValuePtr eqFunc(const std::vector<ValuePtr>& args, EvalEnv& env);
@@ -62,5 +62,5 @@ ValuePtr greaterOrEqual(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr evenPred(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr oddPred(const std::vector<ValuePtr>& args, EvalEnv& env);
 ValuePtr zeroPred(const std::vector<ValuePtr>& args, EvalEnv& env);
-
+ValuePtr memqFunc(const std::vector<ValuePtr>& args, EvalEnv& env);
 #endif  // BUILTINS_H

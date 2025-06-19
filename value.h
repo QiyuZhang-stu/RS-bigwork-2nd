@@ -45,7 +45,13 @@ public:
     virtual ValuePtr getCdr() const {
         throw LispError("Cannot get cdr of non-pair value");
     }
+    virtual bool isTrue() const = 0;
+
+    // 新增 getType 方法
+    virtual std::string getType() const = 0;
+
     operator std::vector<ValuePtr>() const;
+    virtual bool operator==(const Value& other) const = 0;
 };
 
 class BooleanValue : public Value {
@@ -68,6 +74,11 @@ public:
     bool isBoolean() const override;
     bool getValue() const override;
     bool isSymbol() const override;
+    bool isTrue() const override;
+    bool operator==(const Value& other) const override;
+
+    // 新增 getType
+    std::string getType() const override;
 
 private:
     bool value_;
@@ -94,6 +105,11 @@ public:
     bool getValue() const override;
     bool isSymbol() const override;
     double getNumberValue() const;
+    bool isTrue() const override;
+    bool operator==(const Value& other) const override;
+
+    // 新增 getType
+    std::string getType() const override;
 
 private:
     double value_;
@@ -120,6 +136,11 @@ public:
     bool getValue() const override;
     bool isSymbol() const override;
     const std::string& getStringValue() const;
+    bool isTrue() const override;
+    bool operator==(const Value& other) const override;
+
+    // 新增 getType
+    std::string getType() const override;
 
 private:
     std::string value_;
@@ -145,6 +166,11 @@ public:
     bool isBoolean() const override;
     bool getValue() const override;
     bool isSymbol() const override;
+    bool isTrue() const override;
+    bool operator==(const Value& other) const override;
+
+    // 新增 getType
+    std::string getType() const override;
 };
 
 class SymbolValue : public Value {
@@ -155,6 +181,7 @@ public:
     bool isNil() const override;
     std::optional<std::string> asSymbol() const override;
     std::vector<ValuePtr> toVector() const override;
+
     double asNumber() const override;
     bool isNumber() const override;
     bool isList() const override;
@@ -167,6 +194,11 @@ public:
     bool isBoolean() const override;
     bool getValue() const override;
     bool isSymbol() const override;
+    bool isTrue() const override;
+    bool operator==(const Value& other) const override;
+
+    // 新增 getType
+    std::string getType() const override;
 
 private:
     std::string name_;
@@ -200,6 +232,11 @@ public:
     bool isBoolean() const override;
     bool getValue() const override;
     bool isSymbol() const override;
+    bool isTrue()const override;
+    bool operator==(const Value& other) const override;
+
+    // 新增 getType
+    std::string getType() const override;
 
     ValuePtr getCar() const override;
     ValuePtr getCdr() const;
@@ -232,9 +269,13 @@ public:
     bool isBoolean() const override;
     bool getValue() const override;
     bool isSymbol() const override;
-
+    bool isTrue() const override;
+    bool operator==(const Value& other) const override;
     BuiltinFunc* getFunc() const;
     void setName(const std::string& name);
+
+    // 新增 getType
+    std::string getType() const override;
 
 private:
     BuiltinFunc* func_;
@@ -264,8 +305,13 @@ public:
     bool isBoolean() const override;
     bool getValue() const override;
     bool isSymbol() const override;
+    bool isTrue() const override;
+    bool operator==(const Value& other) const override;
     // 应用函数参数
     ValuePtr apply(const std::vector<ValuePtr>& args, EvalEnv& callerEnv);
+
+    // 新增 getType
+    std::string getType() const override;
 
 private:
     std::vector<std::string> params;
