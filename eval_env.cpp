@@ -2,8 +2,8 @@
 
 #include <optional>
 
-#include "error.h"
 #include "builtins.h"
+#include "error.h"
 #include "forms.h"
 
 std::shared_ptr<EvalEnv> EvalEnv::createGlobal() {
@@ -24,8 +24,6 @@ EvalEnv::EvalEnv() : parent_(nullptr) {
 EvalEnv::EvalEnv(const std::shared_ptr<EvalEnv>& parent) : parent_(parent) {
     // 子环境初始化逻辑
 }
-
-
 
 void EvalEnv::initializeBuiltins() {
     // 算术运算
@@ -64,12 +62,49 @@ void EvalEnv::initializeBuiltins() {
         std::make_shared<BuiltinProcValue>(length, "length");
     symbolTable_["list"] = std::make_shared<BuiltinProcValue>(list, "list");
 
-    
     symbolTable_[">"] = std::make_shared<BuiltinProcValue>(greaterThan, ">");
-
-
-
+    symbolTable_["="] = std::make_shared<BuiltinProcValue>(&numEqual, "=");
+    symbolTable_["<"] = std::make_shared<BuiltinProcValue>(&lessThan, "<");
+    symbolTable_["<="] = std::make_shared<BuiltinProcValue>(&lessOrEqual, "<=");
+    symbolTable_[">="] =
+        std::make_shared<BuiltinProcValue>(&greaterOrEqual, ">=");
+    /*symbolTable_["apply"] = std::make_shared<BuiltinProcValue>(&apply, "apply");
+  */  symbolTable_["displayln"] =
+        std::make_shared<BuiltinProcValue>(&displayln, "displayln");
+    symbolTable_["atom?"] =
+        std::make_shared<BuiltinProcValue>(&isAtom, "atom?");
+    symbolTable_["integer?"] =
+        std::make_shared<BuiltinProcValue>(&isInteger, "integer?");
+    symbolTable_["map"] = std::make_shared<BuiltinProcValue>(&mapFunc, "map");
+    symbolTable_["filter"] =
+        std::make_shared<BuiltinProcValue>(&filter, "filter");
+    symbolTable_["eq?"] = std::make_shared<BuiltinProcValue>(&eqFunc, "eq?");
+    symbolTable_["equal?"] =
+        std::make_shared<BuiltinProcValue>(&equalFunc, "equal?");
+    symbolTable_["not"] = std::make_shared<BuiltinProcValue>(&notFunc, "not");
+    symbolTable_["even?"] =
+        std::make_shared<BuiltinProcValue>(&evenPred, "even?");
+    symbolTable_["odd?"] = std::make_shared<BuiltinProcValue>(&oddPred, "odd?");
+    symbolTable_["zero?"] =
+        std::make_shared<BuiltinProcValue>(&zeroPred, "zero?");
+    
+    symbolTable_["abs"] =
+        std::make_shared<BuiltinProcValue>(&absFunc, "abs");  // 绝对值
+    symbolTable_["expt"] =
+        std::make_shared<BuiltinProcValue>(&expt, "expt");  // 指数
+    symbolTable_["quotient"] =
+        std::make_shared<BuiltinProcValue>(&quotient, "quotient");  // 整数除法
+    symbolTable_["modulo"] =
+        std::make_shared<BuiltinProcValue>(&modulo, "modulo");  // 模运算
+    //symbolTable_["remainder"] =
+    //    std::make_shared<BuiltinProcValue>(&remainder, "remainder");  // 余数
     symbolTable_["exit"] = std::make_shared<BuiltinProcValue>(exitFunc, "exit");
+    symbolTable_["append"] =
+        std::make_shared<BuiltinProcValue>(&append, "append");
+    symbolTable_["reduce"] =
+        std::make_shared<BuiltinProcValue>(&reduce, "reduce");
+    symbolTable_["error"] = std::make_shared<BuiltinProcValue>(&error, "error");
+    symbolTable_["eval"] = std::make_shared<BuiltinProcValue>(&eval, "eval");
 }
 
 ValuePtr EvalEnv::lookup(const std::string& name) {
@@ -87,7 +122,6 @@ ValuePtr EvalEnv::lookup(const std::string& name) {
     throw LispError("Variable " + name + " not defined.");
 }
 
-
 ValuePtr EvalEnv::eval(ValuePtr expr) {
     // 1. 自求值表达式
     if (expr->isSelfEvaluating()) {
@@ -101,7 +135,7 @@ ValuePtr EvalEnv::eval(ValuePtr expr) {
 
     // 3. 符号查找
     if (auto name = expr->asSymbol()) {
-        return this->lookup(*name);  
+        return this->lookup(*name);
     }
 
     // 4. 处理列表
@@ -109,7 +143,7 @@ ValuePtr EvalEnv::eval(ValuePtr expr) {
         if (!expr->isPair()) {
             throw LispError("Expected a list for evaluation");
         }
-        
+
         auto list = expr->toVector();
         if (list.empty()) {
             throw LispError("Empty list cannot be evaluated.");
@@ -125,7 +159,6 @@ ValuePtr EvalEnv::eval(ValuePtr expr) {
             }
         }
 
-       
         ValuePtr proc = eval(list[0]);
         std::vector<ValuePtr> args;
         for (size_t i = 1; i < list.size(); i++) {
@@ -137,7 +170,6 @@ ValuePtr EvalEnv::eval(ValuePtr expr) {
         throw LispError(std::string("Evaluation error: ") + e.what());
     }
 }
-
 
 std::vector<ValuePtr> EvalEnv::evalList(ValuePtr expr) {
     std::vector<ValuePtr> result;
@@ -156,7 +188,7 @@ std::vector<ValuePtr> EvalEnv::evalList(ValuePtr expr) {
 ValuePtr EvalEnv::apply(ValuePtr proc, std::vector<ValuePtr> args) {
     if (auto builtin = dynamic_cast<BuiltinProcValue*>(proc.get())) {
         // 关键修复：实际调用内置过程
-        return builtin->getFunc()(args,*this);
+        return builtin->getFunc()(args, *this);
     }
     if (auto lambda = dynamic_cast<LambdaValue*>(proc.get())) {
         return lambda->apply(args, *this);
@@ -168,4 +200,3 @@ ValuePtr EvalEnv::apply(ValuePtr proc, std::vector<ValuePtr> args) {
 void EvalEnv::defineBinding(const std::string& name, ValuePtr value) {
     symbolTable_[name] = value;
 }
-

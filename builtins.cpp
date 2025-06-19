@@ -1,5 +1,4 @@
 #include "builtins.h"
-
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -7,8 +6,9 @@
 
 #include "error.h"
 
-// ========== 辅助函数 ==========
-double asNumber(ValuePtr arg) {
+    // ========== 辅助函数 ==========
+    double
+    asNumber(ValuePtr arg) {
     if (!arg->isNumber()) {
         throw LispError("Expected a number");
     }
@@ -82,7 +82,6 @@ ValuePtr isAtom(const std::vector<ValuePtr>& args, EvalEnv& env) {
         value->isBoolean() || value->isNumber() || value->isString() ||
         value->isSymbol() || value->isNil());
 }
-
 ValuePtr isBoolean(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() != 1) throw LispError("boolean? requires one argument");
     return std::make_shared<BooleanValue>(args[0]->isBoolean());
@@ -97,7 +96,22 @@ ValuePtr isInteger(const std::vector<ValuePtr>& args, EvalEnv& env) {
 
 ValuePtr isList(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() != 1) throw LispError("list? requires one argument");
-    return std::make_shared<BooleanValue>(args[0]->isList());
+
+    ValuePtr obj = args[0];
+    // 空列表是列表
+    if (obj->isNil()) return std::make_shared<BooleanValue>(true);
+
+    // 非pair类型不是列表
+    if (!obj->isPair()) return std::make_shared<BooleanValue>(false);
+
+    // 检查是否以空列表结尾
+    ValuePtr current = obj;
+    while (current->isPair()) {
+        current = current->getCdr();
+    }
+
+    // 只有以空列表结尾的才是正确列表
+    return std::make_shared<BooleanValue>(current->isNil());
 }
 
 ValuePtr isNumber(const std::vector<ValuePtr>& args, EvalEnv& env) {
@@ -376,9 +390,21 @@ ValuePtr remainder(const std::vector<ValuePtr>& args, EvalEnv& env) {
 // ========== 比较库 ==========
 ValuePtr eqFunc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() != 2) throw LispError("eq? requires two arguments");
+
+    // 数字和空列表特殊处理
+    if (args[0]->isNumber() && args[1]->isNumber()) {
+        return std::make_shared<BooleanValue>(args[0]->asNumber() ==
+                                              args[1]->asNumber());
+    }
+
+    // 空列表处理
+    if (args[0]->isNil() && args[1]->isNil()) {
+        return std::make_shared<BooleanValue>(true);
+    }
+
+    // 默认比较对象地址
     return std::make_shared<BooleanValue>(args[0].get() == args[1].get());
 }
-
 ValuePtr equalFunc(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() != 2) throw LispError("equal? requires two arguments");
     return std::make_shared<BooleanValue>(args[0]->toString() ==

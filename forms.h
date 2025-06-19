@@ -6,8 +6,6 @@
 #include "eval_env.h"
 #include "value.h"
 
-
-
 // 特殊形式类型定义
 using SpecialFormType =
     std::function<ValuePtr(const std::vector<ValuePtr>&, EvalEnv&)>;

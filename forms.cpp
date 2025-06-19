@@ -1,7 +1,7 @@
 #include "forms.h"
 
-#include "error.h"
 #include "builtins.h"
+#include "error.h"
 
 ValuePtr quoteForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() != 1) {
@@ -107,7 +107,7 @@ ValuePtr lambdaForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
         body.push_back(args[i]);
     }
 
-     auto envPtr = env.getSharedPtr();  // 使用新增的 getSharedPtr 方法
+    auto envPtr = env.getSharedPtr();  // 使用新增的 getSharedPtr 方法
     auto childEnv = envPtr->createChild();
     return std::make_shared<LambdaValue>(params, body, childEnv);
 }
@@ -155,7 +155,6 @@ ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
         for (size_t i = 1; i < args.size(); i++) {
             lambdaArgs.push_back(args[i]);
         }
-
 
         // 创建 lambda 值
         auto lambda = lambdaForm(lambdaArgs, env);
@@ -319,16 +318,9 @@ ValuePtr quasiquoteForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     return quasiquoteExpand(args[0], env);
 }
 
-
 const std::unordered_map<std::string, SpecialFormType> SPECIAL_FORMS = {
-    {"quote", quoteForm}, 
-    {"if", ifForm},         
-    {"and", andForm},
-    {"or", orForm},       
-    {"lambda", lambdaForm}, 
-    {"define", defineForm},
-    {"cond", condForm},
-    {"begin", beginForm},   
-    {"let", letForm},       
-    {"quasiquote", quasiquoteForm}
-};
+    {"quote", quoteForm},   {"if", ifForm},
+    {"and", andForm},       {"or", orForm},
+    {"lambda", lambdaForm}, {"define", defineForm},
+    {"cond", condForm},     {"begin", beginForm},
+    {"let", letForm},       {"quasiquote", quasiquoteForm}};
